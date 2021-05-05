@@ -10,6 +10,7 @@
     </div>
     <Tasks @toggle-reminder="toggleReminder" 
     @delete-task="deleteTask" :tasks="tasks" />
+    <Footer />
   </div>
 
 </template>
@@ -17,6 +18,7 @@
 <script>
 // import HelloWorld from './components/HelloWorld.vue'
 import Header from './components/Header'
+import Footer from './components/Footer'
 import Tasks from './components/Tasks'
 import AddTask from './components/AddTask'
 
@@ -24,6 +26,7 @@ export default {
   name: 'App',
   components: {
     Header,
+    Footer,
     Tasks,
     AddTask
   },
@@ -39,49 +42,69 @@ export default {
     toggleAddTask() {
       this.showAddTask = !this.showAddTask
     },
-    addTask(task) {
-      this.tasks = [...this.tasks, task]
+    async addTask(task) {
+      const res = await fetch('api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-type': 'application/json',
+        },
+        body: JSON.stringify(task),
+      })
+
+      const data = await res.json()
+
+      this.tasks = [...this.tasks, data]
     },
-    deleteTask(id) {
+
+    async deleteTask(id) {
       // console.log('task', id);
       if (confirm('Apakah kamu yakin menghapus?')) {
-        this.tasks = this.tasks.filter((task) => task.id !== id)
+        const res = await fetch(`api/tasks/${id}`, {
+          method: 'DELETE'
+        })
+
+        res.status === 200 ? (this.tasks = this.tasks.filter((task) => task.id !== id
+        )) : alert('Maaf terjadi kesalahan')
       }
     },
-    toggleReminder(id) {
+
+    async toggleReminder(id) {
       // console.log(id)
+      const taskToToggle = await this.fetchTask(id)
+      const updateTask = {...taskToToggle, reminder: !taskToToggle.reminder}
+
+      const res = await fetch(`api/tasks/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-type': 'application/json',
+        },
+        body: JSON.stringify(updateTask),
+      })
+
+      const data = await res.json()
+
       this.tasks = this.tasks.map((task) => task.id === id
-      ? {...task, reminder: !task.reminder} : task)
+      ? {...task, reminder: data.reminder} : task)
+    },
+
+    async fetchTasks() {
+      const res = await fetch('api/tasks')
+
+      const data = await res.json()
+
+      return data
+    },
+    async fetchTask(id) {
+      const res = await fetch(`api/tasks/${id}`)
+
+      const data = await res.json()
+
+      return data
     },
   },
-  created() {
-    this.tasks = [
-      {
-        id: 1,
-        notes: 'Membuat rest API Laravel',
-        time: '28 April 2021',
-        reminder: true,
-      },
-      {
-        id: 2,
-        notes: 'Membuat komponen di Vue Js',
-        time: '3 Mei 2021',
-        reminder: false,
-      },
-      {
-        id: 3,
-        notes: 'Menghosting Inventaris PKL',
-        time: '30 April 2021',
-        reminder: true,
-      },
-      {
-        id: 4,
-        notes: 'Deploy ke server Linux Ubuntu',
-        time: '5 Mei 2021',
-        reminder: false,
-      },
-    ]
-  }
+  async created() {
+    this.tasks = await this.fetchTasks()
+  },
 }
 </script>
 
